@@ -1,0 +1,64 @@
+name: cron
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cron
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@a7ad9c4f0c65208097f4d34f3cfa1913b80cce5c # main
+      - name: Update upstream revision
+        id: update
+        run: |
+          nix run .#update --accept-flake-config
+          echo "rev=$(jq -r .rev VERSION.json)" >> "$GITHUB_OUTPUT"
+      - name: Run security scans
+        run: nix run .#scan --accept-flake-config
+      - name: Build package
+        run: |
+          if git diff --quiet -- VERSION.json; then
+            exit 0
+          fi
+          nix build path:.#bend --no-link --accept-flake-config
+      - name: Commit and push changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
+          REV: ${{ steps.update.outputs.rev }}
+        run: |
+          if git diff --quiet --exit-code VERSION.json; then
+            echo "Already at the latest main commit"
+            exit 0
+          fi
+
+          gh auth setup-git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add VERSION.json
+          git commit -m "Update Bend to main@${REV:0:12}"
+
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "Updater left uncommitted changes"
+            git status --short
+            exit 1
+          fi
+
+          git push origin "HEAD:${BRANCH}"
