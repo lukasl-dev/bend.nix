@@ -87,8 +87,6 @@
       flake = {
         lib = {
           inherit mkBend;
-
-          mkBendPackage = args: (mkBend args).package;
         };
 
         nixosModules = rec {

@@ -109,9 +109,6 @@ CUDA packages use NVIDIA's unfree license, so the supplied `pkgs` must permit
 unfree packages. Generated executables use the host NVIDIA driver at runtime.
 The CUDA backend is supported only on Linux.
 
-If only the derivation is needed, `lib.mkBendPackage` accepts the same
-arguments and returns `bend.package` directly.
-
 ## Updating
 
 Bend does not publish versioned releases for this source tree, so the package pins a specific commit from upstream's `main` branch. Update that pin manually with:
