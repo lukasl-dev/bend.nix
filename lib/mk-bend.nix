@@ -10,11 +10,13 @@ let
       inherit self pkgs;
     }
     // extraSpecialArgs;
-    modules = [ ./options.nix ] ++ modules;
+    modules = [ (import ./options.nix { inherit self; }) ] ++ modules;
   };
+  cfg = evaluated.config.bend;
 in
 {
   inherit (evaluated) config options;
-  inherit (evaluated.config.bend) cudaSupport cudaPackages;
-  package = evaluated.config.bend.finalPackage;
+  cudaSupport = cfg.cuda.enable;
+  cudaPackages = cfg.cuda.packages;
+  package = cfg.finalPackage;
 }

@@ -32,7 +32,13 @@
           update = import ./update.nix { inherit pkgs; };
           scan = import ./scan.nix { inherit pkgs; };
 
-          module = import ./modules/options.nix { inherit self; };
+          module = import ./lib/options.nix {
+            inherit self;
+            optionPath = [
+              "programs"
+              "bend"
+            ];
+          };
           evaluated = pkgs.lib.evalModules {
             specialArgs = { inherit pkgs; };
             modules = [ module ];

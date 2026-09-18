@@ -1,12 +1,15 @@
 {
   self,
+  optionPath ? [ "bend" ],
+}:
+{
   config,
   pkgs,
   lib,
   ...
 }:
 let
-  cfg = config.bend;
+  cfg = lib.attrByPath optionPath { } config;
   current = builtins.fromJSON (builtins.readFile (self.outPath + "/VERSION.json"));
   inherit (current) rev date hash;
 
@@ -15,18 +18,39 @@ let
     repo = "Bend";
     inherit rev hash;
   };
+
+  bendPackage = pkgs.callPackage ../packages/package.nix {
+    inherit src;
+    version = "unstable-${date}-${builtins.substring 0 7 rev}";
+    cudaSupport = cfg.cuda.enable;
+    cudaPackages = cfg.cuda.packages;
+  };
 in
 {
-  options.bend = {
-    cudaSupport = lib.mkEnableOption "CUDA support for generated Bend executables";
+  options = lib.setAttrByPath optionPath {
+    cuda = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = pkgs.config.cudaSupport;
+        defaultText = lib.literalExpression "pkgs.config.cudaSupport";
+        description = "Whether to support CUDA in generated Bend executables.";
+      };
 
-    cudaPackages = lib.mkOption {
-      # A Nixpkgs CUDA package set contains aliases and package functions, so
-      # it is intentionally opaque here; package.nix selects only what it uses.
-      type = lib.types.raw;
-      default = pkgs.cudaPackages_12;
-      defaultText = lib.literalExpression "pkgs.cudaPackages_12";
-      description = "CUDA package set used when CUDA support is enabled.";
+      packages = lib.mkOption {
+        # A Nixpkgs CUDA package set contains aliases and package functions, so
+        # it is intentionally opaque here; package.nix selects only what it uses.
+        type = lib.types.raw;
+        default = pkgs.cudaPackages_12;
+        defaultText = lib.literalExpression "pkgs.cudaPackages_12";
+        description = "CUDA package set used when CUDA support is enabled.";
+      };
+    };
+
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = bendPackage;
+      defaultText = lib.literalExpression "the Bend package configured by these options";
+      description = "The Bend package to install.";
     };
 
     finalPackage = lib.mkOption {
@@ -36,9 +60,5 @@ in
     };
   };
 
-  config.bend.finalPackage = pkgs.callPackage ../packages/package.nix {
-    inherit src;
-    version = "unstable-${date}-${builtins.substring 0 7 rev}";
-    inherit (cfg) cudaSupport cudaPackages;
-  };
+  config = lib.setAttrByPath optionPath { finalPackage = cfg.package; };
 }

@@ -44,10 +44,20 @@ The default package includes Bun to run Bend and Clang 19 to compile Bend progra
 ### NixOS
 
 ```nix
-{ inputs, ... }:
+{ inputs, pkgs, ... }:
 {
   imports = [ inputs.bend.nixosModules.default ];
-  programs.bend.enable = true;
+
+  programs.bend = {
+    enable = true;
+
+    # Defaults to pkgs.config.cudaSupport. CUDA is supported only on Linux and
+    # requires unfree packages.
+    cuda = {
+      enable = true;
+      packages = pkgs.cudaPackages_12;
+    };
+  };
 }
 ```
 
@@ -73,7 +83,9 @@ The default package includes Bun to run Bend and Clang 19 to compile Bend progra
 
 ### Custom package
 
-Use `lib.mkBend` to construct a package with CUDA support:
+`programs.bend` constructs the appropriate package automatically. Use
+`lib.mkBend` directly when a package is needed outside the NixOS or Home
+Manager modules:
 
 ```nix
 { inputs, pkgs, ... }:
@@ -82,17 +94,15 @@ let
     inherit pkgs;
     modules = [
       {
-        bend = {
-          cudaSupport = true;
-          cudaPackages = pkgs.cudaPackages_12;
+        bend.cuda = {
+          enable = true;
+          packages = pkgs.cudaPackages_12;
         };
       }
     ];
   };
 in
-{
-  environment.systemPackages = [ bend.package ];
-}
+bend.package
 ```
 
 CUDA packages use NVIDIA's unfree license, so the supplied `pkgs` must permit
