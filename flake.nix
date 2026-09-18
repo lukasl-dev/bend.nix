@@ -13,6 +13,12 @@
       flake-parts,
       ...
     }:
+    let
+      mkBend = import ./lib/mk-bend.nix {
+        inherit self;
+        inherit (nixpkgs) lib;
+      };
+    in
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "aarch64-darwin"
@@ -23,16 +29,6 @@
       perSystem =
         { pkgs, ... }:
         let
-          current = builtins.fromJSON (builtins.readFile ./VERSION.json);
-          inherit (current) rev date hash;
-          version = "unstable-${date}-${builtins.substring 0 7 rev}";
-
-          src = pkgs.fetchFromGitHub {
-            owner = "HigherOrderCO";
-            repo = "Bend";
-            inherit rev hash;
-          };
-
           update = import ./update.nix { inherit pkgs; };
           scan = import ./scan.nix { inherit pkgs; };
 
@@ -49,9 +45,7 @@
           packages = rec {
             default = bend;
 
-            bend = pkgs.callPackage ./packages/package.nix {
-              inherit src version;
-            };
+            bend = (mkBend { inherit pkgs; }).package;
 
             docs-md = pkgs.runCommand "bend-options.md" { } ''
               mkdir -p $out
@@ -85,6 +79,12 @@
         };
 
       flake = {
+        lib = {
+          inherit mkBend;
+
+          mkBendPackage = args: (mkBend args).package;
+        };
+
         nixosModules = rec {
           default = bend;
           bend = import ./modules/nixos.nix { inherit self; };

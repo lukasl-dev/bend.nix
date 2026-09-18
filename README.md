@@ -11,6 +11,7 @@ A Nix flake for [Bend](https://github.com/HigherOrderCO/Bend), a fast language t
 It provides:
 
 - packages for `nix run` and `nix build`
+- a configurable package builder with optional CUDA support
 - NixOS and Home Manager modules
 - an overlay exposing `pkgs.bend`
 - a daily update workflow tracking the latest commit on upstream's `main` branch
@@ -30,7 +31,7 @@ Or build it locally:
 nix build .#bend
 ```
 
-The package includes Bun to run Bend and Clang 19 to compile Bend programs to native binaries. Linux builds also include the X11 and ALSA headers and libraries needed by Bend's window and audio effects. CUDA is not included; GPU compilation on Linux still requires a CUDA 12 installation at `/usr/local/cuda`, as expected by upstream.
+The default package includes Bun to run Bend and Clang 19 to compile Bend programs to native binaries. Linux builds also include the X11 and ALSA headers and libraries needed by Bend's window and audio effects. CUDA remains opt-in so the default package stays free and relatively small.
 
 ## Usage
 
@@ -69,6 +70,37 @@ The package includes Bun to run Bend and Clang 19 to compile Bend programs to na
   environment.systemPackages = [ pkgs.bend ];
 }
 ```
+
+### Custom package
+
+Use `lib.mkBend` to construct a package with CUDA support:
+
+```nix
+{ inputs, pkgs, ... }:
+let
+  bend = inputs.bend.lib.mkBend {
+    inherit pkgs;
+    modules = [
+      {
+        bend = {
+          cudaSupport = true;
+          cudaPackages = pkgs.cudaPackages_12;
+        };
+      }
+    ];
+  };
+in
+{
+  environment.systemPackages = [ bend.package ];
+}
+```
+
+CUDA packages use NVIDIA's unfree license, so the supplied `pkgs` must permit
+unfree packages. Generated executables use the host NVIDIA driver at runtime.
+The CUDA backend is supported only on Linux.
+
+If only the derivation is needed, `lib.mkBendPackage` accepts the same
+arguments and returns `bend.package` directly.
 
 ## Updating
 
