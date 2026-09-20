@@ -133,7 +133,7 @@ stdenvNoCC.mkDerivation {
   installCheckPhase = ''
     runHook preInstallCheck
 
-    case "$($out/bin/bend --version)" in
+    case "$($out/bin/bend version)" in
       "bend "*) ;;
       *) exit 1 ;;
     esac
