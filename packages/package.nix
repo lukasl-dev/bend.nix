@@ -118,7 +118,7 @@ stdenvNoCC.mkDerivation {
     runHook preInstall
 
     mkdir -p "$out/bin" "$out/lib/bend/bend2" "$out/lib/bend/guide"
-    cp bend2/{base.bend,bend.ts,comp.ts,main.ts} "$out/lib/bend/bend2/"
+    cp bend2/{base.bend,bend.ts,comp.ts,main.ts,safe.ts,bendtt.lean} "$out/lib/bend/bend2/"
     cp -R bend2/effs "$out/lib/bend/bend2/"
     cp guide/GUIDE.md "$out/lib/bend/guide/"
 
@@ -132,6 +132,9 @@ stdenvNoCC.mkDerivation {
   doInstallCheck = true;
   installCheckPhase = ''
     runHook preInstallCheck
+
+    # --verdict needs this source even when Lean is provided only at runtime.
+    test -f "$out/lib/bend/bend2/bendtt.lean"
 
     case "$($out/bin/bend version)" in
       "bend "*) ;;
